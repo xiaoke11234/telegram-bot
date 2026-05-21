@@ -92,13 +92,34 @@ def wind_direction_label(degrees: float) -> str:
     return directions[idx]
 
 
+def geocode_address(location: str) -> dict | None:
+    """Resolve a location name to full geographic details via Open-Meteo geocoding."""
+    try:
+        resp = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": location, "count": 1, "language": "en", "format": "json"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        results = data.get("results")
+        if not results:
+            return None
+        return results[0]
+    except Exception:
+        return None
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 机器人部署成功！\n\n"
         "可用命令：\n"
         "/start — 显示此帮助信息\n"
-        "/weather <城市> — 查询实时天气\n\n"
-        "示例：/weather Beijing"
+        "/weather <城市> — 查询实时天气\n"
+        "/address <地点> — 查询地址/位置信息\n\n"
+        "示例：\n"
+        "/weather Beijing\n"
+        "/address London"
     )
 
 
@@ -154,6 +175,59 @@ async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, parse_mode="Markdown")
 
 
+async def address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /address <location> command."""
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ 请提供地点名称。\n用法：/address <地点>\n示例：/address Beijing"
+        )
+        return
+
+    location = " ".join(context.args)
+    await update.message.reply_text(f"🔍 正在查询「{location}」的位置信息，请稍候…")
+
+    result = geocode_address(location)
+    if result is None:
+        await update.message.reply_text(
+            f"❌ 找不到地点「{location}」，请检查拼写后重试。"
+        )
+        return
+
+    name = result.get("name", location)
+    country = result.get("country", "")
+    admin1 = result.get("admin1", "")          # state / province
+    lat = result.get("latitude")
+    lon = result.get("longitude")
+    population = result.get("population")
+
+    # Build display title
+    title = name
+    if country:
+        title = f"{name}, {country}"
+
+    # Coordinate formatting
+    lat_label = f"{abs(lat):.2f}°{'N' if lat >= 0 else 'S'}" if lat is not None else "N/A"
+    lon_label = f"{abs(lon):.2f}°{'E' if lon >= 0 else 'W'}" if lon is not None else "N/A"
+
+    # Population formatting
+    pop_line = f"👥 人口：{population:,}\n" if population else ""
+
+    # Admin region line
+    region_line = f"🗺️ 行政区：{admin1}\n" if admin1 else ""
+
+    message = (
+        f"📍 *{title}*\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🌍 国家：{country if country else 'N/A'}\n"
+        f"{region_line}"
+        f"📌 坐标：{lat_label}, {lon_label}\n"
+        f"{pop_line}"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await update.message.reply_text(message, parse_mode="Markdown")
+
+
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Echo any plain text message back to the user."""
     await update.message.reply_text(update.message.text)
@@ -163,6 +237,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("weather", weather))
+    app.add_handler(CommandHandler("address", address))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
     app.run_polling()
 
