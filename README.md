@@ -1,14 +1,23 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import os
+# Telegram Bot
 
-TOKEN = os.getenv("BOT_TOKEN")
+A simple Python Telegram bot built with [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) that responds to the `/start` command.
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("机器人部署成功")
+## Environment Variables
 
-app = ApplicationBuilder().token(TOKEN).build()
+| Variable | Description |
+|---|---|
+| `TELEGRAM_TOKEN` | Your Telegram bot token from [@BotFather](https://t.me/BotFather) |
 
-app.add_handler(CommandHandler("start", start))
+## Deployment on Railway
 
-app.run_polling()
+1. Fork or clone this repository.
+2. Create a new Railway project and connect the repository.
+3. Set the `TELEGRAM_TOKEN` environment variable in the Railway service settings.
+4. Railway (via Railpack) will automatically detect Python, install dependencies from `requirements.txt`, and run `main.py`.
+
+## Local Development
+
+```bash
+pip install -r requirements.txt
+TELEGRAM_TOKEN=your_token_here python main.py
+```
