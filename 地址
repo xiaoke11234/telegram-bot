@@ -1,0 +1,107 @@
+const TronWeb = require('tronweb')
+const axios = require('axios')
+require('dotenv').config()
+
+const tronWeb = new TronWeb({
+    fullHost: process.env.TRONGRID_API
+})
+
+// TRC20-USDT 合约
+const USDT_CONTRACT =
+'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj'
+
+// 查询地址
+const ADDRESS =
+'TXXXXXXXXXXXXXXXXXXXXXXXX'
+
+async function checkWallet() {
+
+    try {
+
+        console.log('====== 钱包信息 ======')
+
+        // 查询 TRX 余额
+        const trxBalance =
+            await tronWeb.trx.getBalance(
+                ADDRESS
+            )
+
+        console.log(
+            'TRX余额:',
+            trxBalance / 1_000_000
+        )
+
+        // 查询 USDT
+        const contract =
+            await tronWeb.contract()
+                .at(USDT_CONTRACT)
+
+        const usdtBalance =
+            await contract.balanceOf(
+                ADDRESS
+            ).call()
+
+        console.log(
+            'USDT余额:',
+            Number(usdtBalance) / 1_000_000
+        )
+
+        // 查询资源
+        const resource =
+            await tronWeb.trx.getAccountResources(
+                ADDRESS
+            )
+
+        console.log(
+            'Energy:',
+            resource.EnergyLimit || 0
+        )
+
+        console.log(
+            'Bandwidth:',
+            resource.freeNetLimit || 0
+        )
+
+        // 查询最近转账记录
+        const txs =
+            await axios.get(
+                `https://apilist.tronscanapi.com/api/transaction?sort=-timestamp&count=true&limit=5&start=0&address=${ADDRESS}`
+            )
+
+        console.log('\n====== 最近交易 ======')
+
+        txs.data.data.forEach(tx => {
+
+            console.log('TXID:', tx.hash)
+
+            console.log(
+                '时间:',
+                new Date(tx.timestamp)
+                    .toLocaleString()
+            )
+
+            console.log(
+                '金额:',
+                tx.amount / 1_000_000
+            )
+
+            console.log(
+                'FROM:',
+                tx.ownerAddress
+            )
+
+            console.log(
+                'TO:',
+                tx.toAddress
+            )
+
+            console.log('----------------')
+        })
+
+    } catch (err) {
+
+        console.log(err.message)
+    }
+}
+
+checkWallet()
