@@ -1,0 +1,33 @@
+const TronWeb = require('tronweb')
+require('dotenv').config()
+
+const tronWeb = new TronWeb({
+    fullHost: 'https://api.trongrid.io',
+    privateKey: process.env.PRIVATE_KEY
+})
+
+const USDT_CONTRACT = 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj'
+
+async function watchUSDT() {
+
+    const contract = await tronWeb.contract().at(USDT_CONTRACT)
+
+    contract.Transfer().watch((err, event) => {
+
+        if (err) return console.log(err)
+
+        const from = tronWeb.address.fromHex(event.result.from)
+        const to = tronWeb.address.fromHex(event.result.to)
+
+        const amount =
+            Number(event.result.value) / 1_000_000
+
+        console.log('收到USDT')
+        console.log('FROM:', from)
+        console.log('TO:', to)
+        console.log('AMOUNT:', amount)
+
+    })
+}
+
+watchUSDT()
